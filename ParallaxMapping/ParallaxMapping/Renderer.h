@@ -13,6 +13,7 @@
 @interface Renderer : NSObject <MTKViewDelegate>
 
 @property(nonatomic, assign) vector_float3 V;
+@property(nonatomic, assign) float parallaxScale;
 -(nonnull instancetype)initWithMetalKitView:(nonnull MTKView *)view;
 
 @end

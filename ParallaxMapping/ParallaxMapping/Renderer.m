@@ -65,6 +65,7 @@
     _uniformBuffer = [_device newBufferWithLength:sizeof(Uniforms) options:MTLResourceStorageModeShared];
     Uniforms *uniforms = (Uniforms*)_uniformBuffer.contents;
     uniforms->camTanDir = (vector_float3){0,0,0};
+    uniforms->parallaxScale = - 0.2f;
     
     _quadBuffer = [_device newBufferWithBytes:verts length:sizeof(verts) options:MTLResourceStorageModeShared];
     _quadBuffer.label = @"QuadVB";
@@ -98,7 +99,7 @@
       MTKTextureLoaderOptionTextureUsage       : @(MTLTextureUsageShaderRead),
       MTKTextureLoaderOptionTextureStorageMode : @(MTLStorageModePrivate)
       };
-    depthTexture = [textureLoader newTextureWithName:@"depth0"
+    depthTexture = [textureLoader newTextureWithName:@"depth3"
                                          scaleFactor:1.0
                                               bundle:nil
                                              options:textureLoaderOptions
@@ -107,7 +108,7 @@
     {
         NSLog(@"Error creating texture %@", error.localizedDescription);
     }
-    sourceTexture = [textureLoader newTextureWithName:@"origin0"
+    sourceTexture = [textureLoader newTextureWithName:@"origin3"
                                       scaleFactor:1.0
                                            bundle:nil
                                           options:textureLoaderOptions
@@ -131,6 +132,7 @@
         // 镜头偏移
         Uniforms *uniforms = (Uniforms*)_uniformBuffer.contents;
         uniforms->camTanDir = self.V;
+        uniforms->parallaxScale = self.parallaxScale;
         
         // 绘制RT到屏幕上
         [myRenderEncoder pushDebugGroup:@"DrawQuad"];

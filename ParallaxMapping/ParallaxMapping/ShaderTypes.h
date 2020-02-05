@@ -44,6 +44,7 @@ typedef struct
     matrix_float4x4 projectionMatrix;
     matrix_float4x4 modelViewMatrix;
     vector_float3 camTanDir;
+    float parallaxScale;
 } Uniforms;
 
 typedef struct

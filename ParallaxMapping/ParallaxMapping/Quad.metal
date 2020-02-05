@@ -31,11 +31,11 @@ vertex VSOutput vertexQuadMain(uint vertexID [[ vertex_id]],
     return out;
 }
 
-/*** 陡峭视差映射函数 ***/
+/*** 陡峭视差映射函数 + 浮雕视差映射 ***/
 float2 ParallaxMapping(texture2d<half> depthTexture, sampler textureSampler, float3 V, float2 T)
 {
    // 采样层数
-   float numLayers = 20;
+   float numLayers = 15;
    // 每一层的高度
    float layerHeight = 1.0 / numLayers;
    // 当前层深度
@@ -61,7 +61,36 @@ float2 ParallaxMapping(texture2d<half> depthTexture, sampler textureSampler, flo
    }
 
     // 解决深度图断崖拖影问题
-    if(currentLayerHeight - heightFromTexture > layerHeight) currentTextureCoords += dtex;
+    //if(currentLayerHeight - heightFromTexture > layerHeight) currentTextureCoords += dtex;
+    
+    /*** 在陡峭视差映射的基础上应用浮雕映射，进一步精确纹理坐标 ***/
+    float2 deltaTexCoord = dtex / 2;
+    float deltaHeight = layerHeight / 2;
+
+    // 两层之间的中点
+    currentTextureCoords += deltaTexCoord;
+    currentLayerHeight -= deltaHeight;
+
+    // 二分法逼近真实交点
+    const int numSearches = 5; // 迭代次数
+    for(int i=0; i<numSearches; i++)
+    {
+       deltaTexCoord /= 2;
+       deltaHeight /= 2;
+
+       heightFromTexture = depthTexture.sample(textureSampler, currentTextureCoords).x;
+
+       if(heightFromTexture > currentLayerHeight)
+       {
+          currentTextureCoords -= deltaTexCoord;
+          currentLayerHeight += deltaHeight;
+       }
+       else
+       {
+          currentTextureCoords += deltaTexCoord;
+          currentLayerHeight -= deltaHeight;
+       }
+    }
     
    //parallaxHeight = currentLayerHeight;
    return currentTextureCoords;
@@ -77,8 +106,7 @@ fragment FSOutput fragmentQuadMain(VSOutput input [[stage_in]],
                                       min_filter::linear);
         
     // 映射算法
-    float scale = -0.15f;
-    float2 offset = uniforms.camTanDir.xy * scale;
+    float2 offset = uniforms.camTanDir.xy * uniforms.parallaxScale;
     float3 V = float3(offset,1.0);
     float2 parallaxCoord = ParallaxMapping(depthTexture,textureSampler,normalize(V),input.texcoord);
     

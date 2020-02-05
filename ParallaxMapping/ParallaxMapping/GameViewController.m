@@ -22,6 +22,24 @@
 {
     [super viewDidLoad];
     
+    _view = (MTKView *)self.view;
+    _view.device = MTLCreateSystemDefaultDevice();
+    _view.backgroundColor = UIColor.blackColor;
+    if(!_view.device)
+    {
+        NSLog(@"Metal is not supported on this device");
+        self.view = [[UIView alloc] initWithFrame:self.view.frame];
+        return;
+    }
+    
+    // 渲染器
+    _renderer = [[Renderer alloc] initWithMetalKitView:_view];
+    [_renderer mtkView:_view drawableSizeWillChange:_view.bounds.size];
+    _view.delegate = _renderer;
+    
+    _renderer.parallaxScale = - 0.2; // 镜头偏移敏感度设置，符号表示方向
+    
+    // 陀螺仪
     _motionManager = [[CMMotionManager alloc] init];
     if(![_motionManager isGyroAvailable])
     {
@@ -33,23 +51,6 @@
         // 传入陀螺仪参数到render
         self->_renderer.V = (vector_float3){motion.gravity.x, motion.gravity.y, motion.gravity.z};
     }];
-    _view = (MTKView *)self.view;
-
-    _view.device = MTLCreateSystemDefaultDevice();
-    _view.backgroundColor = UIColor.blackColor;
-
-    if(!_view.device)
-    {
-        NSLog(@"Metal is not supported on this device");
-        self.view = [[UIView alloc] initWithFrame:self.view.frame];
-        return;
-    }
-
-    _renderer = [[Renderer alloc] initWithMetalKitView:_view];
-
-    [_renderer mtkView:_view drawableSizeWillChange:_view.bounds.size];
-
-    _view.delegate = _renderer;
 }
 
 @end
