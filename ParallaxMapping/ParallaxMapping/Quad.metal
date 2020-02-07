@@ -99,7 +99,8 @@ float2 ParallaxMapping(texture2d<half> depthTexture, sampler textureSampler, flo
 fragment FSOutput fragmentQuadMain(VSOutput input [[stage_in]],
                                    constant Uniforms & uniforms [[buffer(0)]],
                                    texture2d<half> colorTexture [[ texture(0) ]],
-                                   texture2d<half> depthTexture [[ texture(1) ]])
+                                   texture2d<half> bgTexture [[ texture(1) ]],
+                                   texture2d<half> depthTexture [[ texture(2) ]])
 {
     FSOutput out;
     constexpr sampler textureSampler (mag_filter::linear,
@@ -110,8 +111,18 @@ fragment FSOutput fragmentQuadMain(VSOutput input [[stage_in]],
     float3 V = float3(offset,1.0);
     float2 parallaxCoord = ParallaxMapping(depthTexture,textureSampler,normalize(V),input.texcoord);
     
-    // 采样贴图
-    const half4 colorSample = colorTexture.sample(textureSampler, parallaxCoord);
+    
+    half4 colorSample;
+    // 超出边界的模糊处理
+    if(parallaxCoord.x > 1.0 || parallaxCoord.x < 0 || parallaxCoord.y > 1.0 || parallaxCoord.y < 0)
+    {
+        colorSample = bgTexture.sample(textureSampler, input.texcoord);
+    }
+    else
+    {
+        // 采样贴图
+        colorSample = colorTexture.sample(textureSampler, parallaxCoord);
+    }
     
     // return the color of the texture
     out.frag_data = colorSample;

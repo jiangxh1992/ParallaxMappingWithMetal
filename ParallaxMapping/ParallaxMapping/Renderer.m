@@ -20,6 +20,7 @@
     id<MTLBuffer> _uniformBuffer;
     
     id<MTLTexture> sourceTexture;
+    id<MTLTexture> bgBlurTexture;
     id<MTLTexture> depthTexture;
     
     id <MTLRenderPipelineState> _pipelineState;
@@ -99,7 +100,7 @@
       MTKTextureLoaderOptionTextureUsage       : @(MTLTextureUsageShaderRead),
       MTKTextureLoaderOptionTextureStorageMode : @(MTLStorageModePrivate)
       };
-    depthTexture = [textureLoader newTextureWithName:@"depth3"
+    depthTexture = [textureLoader newTextureWithName:@"depth2"
                                          scaleFactor:1.0
                                               bundle:nil
                                              options:textureLoaderOptions
@@ -108,15 +109,24 @@
     {
         NSLog(@"Error creating texture %@", error.localizedDescription);
     }
-    sourceTexture = [textureLoader newTextureWithName:@"origin3"
+    sourceTexture = [textureLoader newTextureWithName:@"origin2"
                                       scaleFactor:1.0
                                            bundle:nil
                                           options:textureLoaderOptions
                                             error:&error];
+    sourceTexture.label = @"原图纹理";
     if(!sourceTexture || error)
     {
         NSLog(@"Error creating texture %@", error.localizedDescription);
     }
+    
+    MTLTextureDescriptor *texDes = [[MTLTextureDescriptor alloc] init];
+    texDes.pixelFormat = sourceTexture.pixelFormat;
+    texDes.width = sourceTexture.width;
+    texDes.height = sourceTexture.height;
+    texDes.usage = MTLTextureUsageShaderWrite | MTLTextureUsageShaderRead;
+    bgBlurTexture = [_device newTextureWithDescriptor:texDes];
+    bgBlurTexture.label = @"模糊背景贴图";
 }
 
 - (void)drawInMTKView:(nonnull MTKView *)view
@@ -127,6 +137,10 @@
     MTLRenderPassDescriptor* curRenderDescriptor = view.currentRenderPassDescriptor;
     if(curRenderDescriptor !=  nil)
     {
+        // MPS 高斯模糊
+        MPSImageGaussianBlur *gaussianBlur = [[MPSImageGaussianBlur alloc] initWithDevice:_device sigma:15];
+        [gaussianBlur encodeToCommandBuffer:commandBuffer sourceTexture:sourceTexture destinationTexture:bgBlurTexture];
+
         id<MTLRenderCommandEncoder> myRenderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:curRenderDescriptor];
         
         // 镜头偏移
@@ -142,7 +156,8 @@
         [myRenderEncoder setVertexBuffer:_quadBuffer offset:0 atIndex:0];
         [myRenderEncoder setFragmentBuffer:_uniformBuffer offset:0 atIndex:0];
         [myRenderEncoder setFragmentTexture:sourceTexture atIndex:0];
-        [myRenderEncoder setFragmentTexture:depthTexture atIndex:1];
+        [myRenderEncoder setFragmentTexture:bgBlurTexture atIndex:1];
+        [myRenderEncoder setFragmentTexture:depthTexture atIndex:2];
         [myRenderEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
         [myRenderEncoder popDebugGroup];
         [myRenderEncoder endEncoding];
