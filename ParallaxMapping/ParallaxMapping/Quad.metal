@@ -31,42 +31,15 @@ vertex VSOutput vertexQuadMain(uint vertexID [[ vertex_id]],
     return out;
 }
 
-/*** 陡峭视差映射函数 ***/
-float2 ParallaxMapping(texture2d<half> depthTexture, sampler textureSampler, float3 V, float2 T)
+/*** 带偏移上限的视差映射 ***/
+float2 ParallaxMapping(texture2d<half> depthTexture, sampler textureSampler, float3 V, float2 T0)
 {
-   // 采样层数
-   float numLayers = 20;
-   // 每一层的高度
-   float layerHeight = 1.0 / numLayers;
-   // 当前层深度
-   float currentLayerHeight = 0;
-   // 每一层之间纹理坐标的偏移
-   float2 dtex = V.xy / numLayers;
+    float scale = 1.0;
+    half H0 = depthTexture.sample(textureSampler, T0).x;
+    float2 currentTextureCoords = T0 + V.xy * H0 * scale;
 
-   // 当前纹理坐标
-   float2 currentTextureCoords = T;
-
-   // 原始位置的初始深度值
-   half heightFromTexture = depthTexture.sample(textureSampler, currentTextureCoords).x;
-
-   // 比对采样层深度和当前深度图的值，找到最接近的采样交点
-   while(heightFromTexture > currentLayerHeight)
-   {
-      // 下一层的深度
-      currentLayerHeight += layerHeight;
-      // 纹理坐标递进偏移
-      currentTextureCoords -= dtex;
-      // 获取当前的深度图值
-      heightFromTexture = depthTexture.sample(textureSampler, currentTextureCoords).x;
-   }
-
-    // 解决深度图断崖拖影问题
-    if(currentLayerHeight - heightFromTexture > layerHeight) currentTextureCoords += dtex;
-    
-   //parallaxHeight = currentLayerHeight;
-   return currentTextureCoords;
+    return currentTextureCoords;
 }
-
 fragment FSOutput fragmentQuadMain(VSOutput input [[stage_in]],
                                    constant Uniforms & uniforms [[buffer(0)]],
                                    texture2d<half> colorTexture [[ texture(0) ]],
